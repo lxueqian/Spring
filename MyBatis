@@ -1,0 +1,562 @@
+Mybatis基础:itheima_mybatis_quick
+    1.概念
+        基于java的持久层框架，内部封装了jdbc，使得开发者只需要关注sql本身，不需要花费精力去处理
+        加载驱动、创建连接、创建statement等繁杂的过程
+        通过注解或者xml的方式执行各种statement配置，通过java对象和statement中的sql的动态参数
+        进行映射生成最终执行的sql语句，会把执行结果映射为java对象返回
+
+        使我们不需要与jdbc api打交道就可以完成对数据库的持久化操作
+
+    2.快速入门
+        添加MyBatis坐标
+        创建数据表和实体类
+            src/main/java/com/itheima/domain/User.java
+        编写映射文件：主要写sql语句
+            包括执行语句以及返回结果类型
+            src/main/resources/com/itheima/mapper/UserMapper.xml
+        编写核心文件：主要写核心配置，如数据源位置、读取映射文件、自定义类型的别名等
+            src/main/resources/sqlMapConfig.xml
+        编写测试类
+            src/test/java/com/itheima/test/MyBatisTest.java
+            //获得核心配置文件
+            InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
+            //获得session工厂对象
+            SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+            //获得session会话对象
+            SqlSession sqlSession = sqlSessionFactory.openSession();
+            //执行操作  参数：namespace+id
+            sqlSession.delete("userMapper.delete",8);
+
+        Mybatis需要手动提交事务
+
+    3.核心配置文件
+        properties标签：该标签可以加载外部的properties文件
+            <properties resource="jdbc.properties"></properties>
+
+        typeAliases标签：设置类型别名
+            <typeAlias type="com.itheima.domain.User" alias="user"></typeAlias>
+
+        mappers标签：加载映射配置
+            <mapper resource="com/itheima/mapper/UserMapping.xml"></mapper>
+
+        environments标签：数据源环境配置标签
+
+    4.MyBatis相应API
+        1）SqlSession工厂构建器SqlSessionFactoryBuilder
+            通过加载mybatis的核心文件的输入流的形式构建一个SqlSessionFactory对象
+        2）SqlSession工厂对象SqlSessionFactory
+            SqlSessionFactory 有多个个方法创建SqlSession 实例
+            sqlSessionFactory.openSession()
+        3）SqlSession会话对象！！！！
+            SqlSession 实例在 MyBatis 中是非常强大的一个类。在这里你会看到所有执行语句、提交或回滚事务
+            和获取映射器实例的方法
+
+Mybatis的Dao层实现 itheima_mybatis_dao
+    1.传统开发方式
+        编写UserDao接口
+            public interface UserDao {
+                List<User> findAll() throws IOException;
+            }
+        编写UserDaoImpl实现
+            public class UserDaoImpl implements UserDao {
+                public List<User> findAll() throws IOException {
+                    InputStream resourceAsStream =
+                                Resources.getResourceAsStream("SqlMapConfig.xml");
+                    SqlSessionFactory sqlSessionFactory = new
+                                SqlSessionFactoryBuilder().build(resourceAsStream);
+                    SqlSession sqlSession = sqlSessionFactory.openSession();
+                    List<User> userList = sqlSession.selectList("userMapper.findAll");
+                    sqlSession.close();
+                    return userList;
+                }
+            }
+        测试传统方式
+            @Test
+            public void testTraditionDao() throws IOException {
+                UserDao userDao = new UserDaoImpl();
+                List<User> all = userDao.findAll();
+                System.out.println(all);
+            }
+    2.代理开发方式
+        后面进入企业的主流
+        Mapper 接口开发方法只需要程序员编写Mapper 接口（相当于Dao 接口），由Mybatis 框架根据接口定
+        义创建接口的动态代理对象，代理对象的方法体同上边Dao接口实现类方法。
+        1）编写UserMapper接口
+            public interface UserMapper {
+                public List<User> findAll() throws IOException;
+                public User findById(int id);
+            }
+            Mapper 接口开发需要遵循以下规范：
+
+            **1) Mapper.xml文件中的namespace与mapper接口的全限定名相同**
+            **2) Mapper接口方法名和Mapper.xml中定义的每个statement的id相同**
+            **3) Mapper接口方法的输入参数类型和mapper.xml中定义的每个sql的parameterType的类型相同**
+            **4) Mapper接口方法的输出参数类型和mapper.xml中定义的每个sql的resultType的类型相同**
+
+        2）测试代理方式
+            @Test
+            public void testProxyDao() throws IOException {
+                InputStream resourceAsStream = Resources.getResourceAsStream("SqlMapConfig.xml");
+                SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+                SqlSession sqlSession = sqlSessionFactory.openSession();
+                //获得MyBatis框架生成的UserMapper接口的实现类
+                UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+                User user = userMapper.findById(1);
+                System.out.println(user);
+                sqlSession.close();
+            }
+
+        好处就是不用自己实现接口了，框架会自动创建接口的代理对象，相当于要改的地方越来越接近web层了
+        主要就是写UserMapper配置和接口
+
+    3.MyBatis映射文件深入  itheima_mybatis_mapper
+        动态sql语句
+
+            1）动态 SQL  之<**if>** ！！！！！！！！！
+                根据实体类的不同取值，使用不同的 SQL语句来进行查询。比如在id如果不为空时可以根据id查询
+            2）动态 SQL  之<**foreach>**
+                循环执行sql的拼接操作，例如：SELECT * FROM USER WHERE id IN (1,2,5)
+
+        SQL片段抽取
+             Sql 中可将重复的 sql 提取出来，使用时用 include 引用即可，最终达到 sql 重用的目的
+             <sql id="selectUser" select * from User</sql>
+             <select id="findById" parameterType="int" resultType="user">
+                 <include refid="selectUser"></include> where id=#{id}
+             </select>
+
+        MyBatis映射文件配置：
+            <select>：查询
+            <insert>：插入
+            <update>：修改
+            <delete>：删除
+            <where>：where条件
+            <if>：if判断
+            <foreach>：循环
+            <sql>：sql片段抽取
+
+    4.MyBatis核心文件深入 itheima_mybatis_config
+        typeHandlers标签
+            无论是 MyBatis 在预处理语句（PreparedStatement）中设置一个参数时，还是从结果集中取出一个值时， 都会用类型处理器将获取的值以合适的方式转换成 Java 类型
+            可以重写类型处理器或创建你自己的类型处理器来处理不支持的或非标准的类型
+            开发步骤：
+                ①定义转换类继承类BaseTypeHandler<T>
+                ②覆盖4个未实现的方法，其中setNonNullParameter为java程序设置数据到数据库的回调方法，
+                getNullableResult为查询时 mysql的字符串类型转换成 java的Type类型的方法
+                ③在MyBatis核心配置文件中进行注册
+                    <typeHandlers>
+                        <typeHandler handler="com.itheima.handler.DateTypeHandler"></typeHandler>
+                    </typeHandlers>
+
+                测试转换是否正确
+
+        plugins标签 itheima_mybatis_config/src/test/java/com/itheima/test/MybatisTest.java
+            分页助手PageHelper是将分页的复杂操作进行封装，使用简单的方式即可获得分页的相关数据
+            开发步骤：
+                ①导入通用PageHelper的坐标
+                ②在mybatis核心配置文件中配置PageHelper插件
+                ③测试分页数据获取
+
+        MyBatis核心配置文件常用标签：
+            1、properties标签：该标签可以加载外部的properties文件
+            2、typeAliases标签：设置类型别名
+            3、environments标签：数据源环境配置标签
+            4、typeHandlers标签：配置自定义类型处理器
+            5、plugins标签：配置MyBatis的插件
+
+Mybatis的多表操作   itheima_mybatis_multi
+    1.一对一查询
+        用户和订单
+        查询一个订单，与此同时查询出该订单所属的用户
+        select *  from orders o,user u where o.uid=u.id;
+        1）创建Order和User实体
+            public class Order {
+
+                private int id;
+                private Date ordertime;
+                private double total;
+
+                //代表当前订单从属于哪一个客户
+                private User user;
+            }
+
+            public class User {
+                private int id;
+                private String username;
+                private String password;
+                private Date birthday;
+
+            }
+
+        2）创建OrderMapper接口
+            public interface OrderMapper {
+                public List<Order> findAll();
+            }
+        3）在核心文件中注册新的映射文件
+
+        3）配置OrderMapper.xml
+            <resultMap id="orderMap" type="com.itheima.domain.Order">
+                <result property="id" column="id"></result>
+                <result property="ordertime" column="ordertime"></result>
+                <result property="total" column="total"></result>
+                <association property="user" javaType="com.itheima.domain.User">
+                    <result column="uid" property="id"></result>
+                    <result column="username" property="username"></result>
+                    <result column="password" property="password"></result>
+                    <result column="birthday" property="birthday"></result>
+                </association>
+            </resultMap>
+
+    2.一对多查询
+        查询一个用户，与此同时查询出该用户具有的订单
+        select *,o.id oid from user u left join orders o on u.id=o.uid;
+        1）修改User实体
+            public class Order {
+
+                private int id;
+                private Date ordertime;
+                private double total;
+
+                //代表当前订单从属于哪一个客户
+                private User user;
+            }
+
+            public class User {
+
+                private int id;
+                private String username;
+                private String password;
+                private Date birthday;
+                //代表当前用户具备哪些订单
+                private List<Order> orderList;
+            }
+        2）创建UserMapper接口
+            public interface UserMapper {
+              List<User> findAll();
+            }
+
+        3）配置UserMapper.xml
+            <mapper namespace="com.itheima.mapper.UserMapper">
+                <resultMap id="userMap" type="com.itheima.domain.User">
+                    属性和列明之间的映射
+                    <result column="id" property="id"></result>
+                    <result column="username" property="username"></result>
+                    <result column="password" property="password"></result>
+                    <result column="birthday" property="birthday"></result>
+                    <collection property="orderList" ofType="com.itheima.domain.Order">
+                        <result column="oid" property="id"></result>
+                        <result column="ordertime" property="ordertime"></result>
+                        <result column="total" property="total"></result>
+                    </collection>
+                </resultMap>
+                <select id="findAll" resultMap="userMap">
+                    select *,o.id oid from user u left join orders o on u.id=o.uid
+                </select>
+            </mapper>
+
+        4）测试结果
+            UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+            List<User> all = mapper.findAll();
+            for(User user : all){
+              System.out.println(user.getUsername());
+              List<Order> orderList = user.getOrderList();
+              for(Order order : orderList){
+                  System.out.println(order);
+              }
+              System.out.println("----------------------------------");
+            }
+
+    3.多对多查询
+        查询用户同时查询出该用户的所有角色
+        1）创建Role实体，修改User实体
+          public class User {
+              private int id;
+              private String username;
+              private String password;
+              private Date birthday;
+              //代表当前用户具备哪些订单
+              private List<Order> orderList;
+              //代表当前用户具备哪些角色
+              private List<Role> roleList;
+          }
+
+          public class Role {
+              private int id;
+              private String rolename;
+          }
+        2）添加UserMapper接口方法
+            List<User> findAllUserAndRole();
+
+        3）配置UserMapper.xml
+            <resultMap id="userRoleMap" type="com.itheima.domain.User">
+                <result column="id" property="id"></result>
+                <result column="username" property="username"></result>
+                <result column="password" property="password"></result>
+                <result column="birthday" property="birthday"></result>
+                <collection property="roleList" ofType="com.itheima.domain.Role">
+                    <result column="rid" property="id"></result>
+                    <result column="rolename" property="rolename"></result>
+                </collection>
+            </resultMap>
+            <select id="findAllUserAndRole" resultMap="userRoleMap">
+                select u.*,r.*,r.id rid from user u left join user_role ur on u.id=ur.user_id
+                inner join role r on ur.role_id=r.id
+            </select>
+
+        4）测试结果
+            UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+            List<User> all = mapper.findAllUserAndRole();
+            for(User user : all){
+              System.out.println(user.getUsername());
+              List<Role> roleList = user.getRoleList();
+              for(Role role : roleList){
+                  System.out.println(role);
+              }
+              System.out.println("----------------------------------");
+            }
+
+    MyBatis多表配置方式：
+        单表：parameterType resultType
+        **一对一配置：使用<resultMap>做配置**
+        **一对多配置：使用<resultMap>+<collection>做配置**
+        **多对多配置：使用<resultMap>+<collection>做配置**
+
+
+Mybatis的注解开发  itheima_mybatis_anno
+    1. MyBatis的常用注解
+    这几年来注解开发越来越流行，Mybatis也可以使用注解开发方式，这样我们就可以减少编写Mapper
+    映射文件了。我们先围绕一些基本的CRUD来学习，再学习复杂映射多表操作。
+        @Insert：实现新增
+        @Update：实现更新
+        @Delete：实现删除
+        @Select：实现查询
+        @Result：实现结果集封装
+        @Results：可以与@Result 一起使用，封装多个结果集
+        @One：实现一对一结果集封装
+        @Many：实现一对多结果集封装
+
+    2.MyBatis的增删改查 （简单版）
+        itheima_mybatis_anno/src/test/java/com/itheima/test/MyBatisTest.java
+        1）在接口中使用注解调用方法 mapper/UserMapper.java
+        2）修改MyBatis的核心配置文件，我们使用了注解替代的映射文件，所以我们只需要加载使用了
+           注解的Mapper接口即可
+          <mappers>
+              <!--扫描使用注解的类-->
+              <mapper class="com.itheima.mapper.UserMapper"></mapper>
+          </mappers>
+
+          或者指定扫描包含映射关系的接口所在的包也可以
+          <mappers>
+              <!--扫描使用注解的类所在的包-->
+              <package name="com.itheima.mapper"></package>
+          </mappers>
+
+        其实就是省略了配置mapper文件的过程
+
+    3.MyBatis的注解实现复杂映射开发
+        实现复杂关系映射之前我们可以在映射文件中通过配置<resultMap>来实现，使用注解开发后，我们可
+        以使用@Results注解，@Result注解，@One注解，@Many注解组合完成复杂关系的配置
+        1)一对一
+            ##### 2.4.3 创建Order和User实体
+
+            public class Order {
+                private int id;
+                private Date ordertime;
+                private double total;
+                //代表当前订单从属于哪一个客户
+                private User user;
+            }
+
+            public class User {
+                private int id;
+                private String username;
+                private String password;
+                private Date birthday;
+            }
+
+            ##### 2.4.4 创建OrderMapper接口
+
+            public interface OrderMapper {
+                List<Order> findAll();
+            }
+
+            ##### 2.4.5 使用注解配置Mapper
+
+            public interface OrderMapper {
+                @Select("select * from orders")
+                @Results({
+                        @Result(id=true,property = "id",column = "id"),
+                        @Result(property = "ordertime",column = "ordertime"),
+                        @Result(property = "total",column = "total"),
+                        @Result(property = "user",column = "uid",
+                                javaType = User.class,
+                                one = @One(select = "com.itheima.mapper.UserMapper.findById"))
+                })
+                List<Order> findAll();
+            }
+
+            public interface UserMapper {
+
+                @Select("select * from user where id=#{id}")
+                User findById(int id);
+
+            }
+
+            ##### 2.4.6 测试结果
+            @Test
+            public void testSelectOrderAndUser() {
+                List<Order> all = orderMapper.findAll();
+                for(Order order : all){
+                    System.out.println(order);
+                }
+            }
+
+        2）一对多查询
+          查询一个用户，与此同时查询出该用户具有的订单
+              select * from user;
+              select * from orders where uid=查询出用户的id;
+
+          ##### 2.5.3 修改User实体
+          public class Order {
+
+              private int id;
+              private Date ordertime;
+              private double total;
+
+              //代表当前订单从属于哪一个客户
+              private User user;
+          }
+
+          public class User {
+
+              private int id;
+              private String username;
+              private String password;
+              private Date birthday;
+              //代表当前用户具备哪些订单
+              private List<Order> orderList;
+          }
+
+          ##### 2.5.4 创建UserMapper接口
+
+          List<User> findAllUserAndOrder();
+
+          ##### 2.5.5 使用注解配置Mapper
+          public interface UserMapper {
+              @Select("select * from user")
+              @Results({
+                      @Result(id = true,property = "id",column = "id"),
+                      @Result(property = "username",column = "username"),
+                      @Result(property = "password",column = "password"),
+                      @Result(property = "birthday",column = "birthday"),
+                      @Result(property = "orderList",column = "id",
+                              javaType = List.class,
+                              many = @Many(select = "com.itheima.mapper.OrderMapper.findByUid"))
+              })
+              List<User> findAllUserAndOrder();
+          }
+
+          public interface OrderMapper {
+              @Select("select * from orders where uid=#{uid}")
+              List<Order> findByUid(int uid);
+
+          }
+
+          ##### 2.5.6 测试结果
+          List<User> all = userMapper.findAllUserAndOrder();
+          for(User user : all){
+              System.out.println(user.getUsername());
+              List<Order> orderList = user.getOrderList();
+              for(Order order : orderList){
+                  System.out.println(order);
+              }
+              System.out.println("-----------------------------");
+          }
+
+        3）多对多
+            用户表和角色表的关系为，一个用户有多个角色，一个角色被多个用户使用
+            查询用户同时查询出该用户的所有角色
+                select * from user;
+                select * from role r,user_role ur where r.id=ur.role_id and ur.user_id=用户的id
+
+            ##### 2.6.3 创建Role实体，修改User实体
+            public class User {
+                private int id;
+                private String username;
+                private String password;
+                private Date birthday;
+                //代表当前用户具备哪些订单
+                private List<Order> orderList;
+                //代表当前用户具备哪些角色
+                private List<Role> roleList;
+            }
+
+            public class Role {
+
+                private int id;
+                private String rolename;
+
+            }
+
+            ##### 2.6.4 添加UserMapper接口方法
+
+            List<User> findAllUserAndRole();
+
+            ##### 2.6.5 使用注解配置Mapper
+            public interface UserMapper {
+                @Select("select * from user")
+                @Results({
+                    @Result(id = true,property = "id",column = "id"),
+                    @Result(property = "username",column = "username"),
+                    @Result(property = "password",column = "password"),
+                    @Result(property = "birthday",column = "birthday"),
+                    @Result(property = "roleList",column = "id",
+                            javaType = List.class,
+                            many = @Many(select = "com.itheima.mapper.RoleMapper.findByUid"))
+            })
+            List<User> findAllUserAndRole();}
+
+            public interface RoleMapper {
+                @Select("select * from role r,user_role ur where r.id=ur.role_id and ur.user_id=#{uid}")
+                List<Role> findByUid(int uid);
+            }
+
+            ##### 2.6.6 测试结果
+            UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+            List<User> all = mapper.findAllUserAndRole();
+            for(User user : all){
+                System.out.println(user.getUsername());
+                List<Role> roleList = user.getRoleList();
+                for(Role role : roleList){
+                    System.out.println(role);
+                }
+                System.out.println("----------------------------------");
+            }
+
+SSM
+    1.步骤
+        创建maven web项目
+            <build>可以不要
+            手动补全main下的文件夹 并且标记文件类型
+        导入maven坐标
+            版本锁定
+        实现spring+mybatis整合
+            编写实体类（POJO类）
+            编写Mapper接口（持久层DAO接口编写）
+            Mapper映射文件编写（路径要和接口相同）
+            业务层Service接口和实现类编写
+                --@Service
+                  @Transactional
+                --接口和Mapper接口一样欸
+            spring配置文件applicationContext-dao.xml编写
+                --配置数据源
+                --配置SqlSessionFactory到Spring容器中
+                --扫描Mapper，让Spring容器产生Mapper实现类
+            spring配置文件applicationContext-service.xml编写(service上配置注解）
+                --配置组件注解扫描
+                --配置声明式事务控制
+
+        加入SpringMVC相关配置
+            表现层controller编写
+            springMvc配置文件
+            jsp页面编写
+            配置web.xml

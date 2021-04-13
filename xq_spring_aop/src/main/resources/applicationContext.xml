@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context  http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+        <!--目标对象-->
+        <bean id="target" class="com.xq.aop.Target"></bean>
+        <!--切面对象-->
+        <bean id="myAspect" class="com.xq.aop.MyAspect"></bean>
+        <!--配置织入-->
+        <aop:config>
+                <!--声明切面:切点+通知-->
+                <aop:aspect ref="myAspect">
+                        <aop:pointcut id="myPointcut" expression="execution(* com.xq.aop.*.*(..))"/>
+                        <aop:after-returning method="afterReturning" pointcut-ref="myPointcut"></aop:after-returning>
+                       <!--<aop:before method="beforeMethod" pointcut="execution(public void com.xq.aop.Target.save())"></aop:before>
+                       <aop:before method="beforeMethod" pointcut="execution(* com.xq.aop.*.*(..))"></aop:before>-->
+                      <!-- <aop:around method="around" pointcut="execution(* com.xq.aop.*.*(..))"></aop:around>-->
+
+
+                </aop:aspect>
+
+
+
+        </aop:config>
+        <context:component-scan base-package="com.xq.aop"></context:component-scan>
+        <!--aop自动代理-->
+        <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+
+
+
+
+</beans>

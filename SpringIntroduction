@@ -1,0 +1,629 @@
+shift+shift 搜索类  alt+control+b 显示接口实现类
+Spring优势：
+    1.方便解耦 简化开发：通过Spring提供的IOC容器，将对象间的依赖关系交给spring控制
+    2.AOP编程支持，隔离不同逻辑代码
+    3.声明式事务的支持
+    4.方便程序测试
+    5.方便集成各种优秀的框架
+    6.降低javaEE API的使用难度：对JavaEE API 进行封装（JDBC JavaEmail 远程调用）成模板
+    7.java源码是经典学习典范
+
+Spring体系：
+    1.Test
+    2.Core Container:Beans Core Context SpEL
+    3.AOP Aspects Instrumentation Messaging
+    4.Data Access Web
+
+Spring程序开发步骤：
+    1.Spring框架读取xml配置文件（解耦方法）
+    2.通过id标识获得Bean全限定名
+    3.通过反射创建Bean对象
+    4.返回对象
+
+    也就是说：少改代码只修改配置文件就可以完成任务，通过配置文件完成解耦
+    1.导入Spring开发的基本包坐标  /Spring/xq_spring_ioc/pom.xml (maven方法)
+    2.编写Dao接口和实现类         src/main/java/com/xq
+    3.创建Spring核心配置文件      src/main/resources/applicationContext.xml
+    4.在Spring配置文件中配置UserDaoImpl   <bean id="userDao" class="com.xq.dao.impl.UserDaoImpl"></bean>
+    5.使用Spring的API获得Bean实例 src/main/java/com/xq/demo
+
+Spring配置文件：
+    1.Bean标签
+        1.基本配置：默认调用类中的无参构造方法，用于配置对象交给Spring创建 id class(全限定名）
+        2.标签范围：
+            singleton 默认值 单例 调用多少次方法都只会产生一个对象+加载Spring核心文件时实例化配置Bean实例
+                                 容器销毁对象就被销毁了
+            prototype 多例的 调用几次方法产生几个对象+getBean()使用时实例化
+                            长时间不用被java的垃圾回收器回收
+            request/session/global session
+        3.生命周期配置：
+            init-method
+            destory-method 指定类中销毁方法名称
+        4.三种实例化方式
+            无参构造实例化
+            工厂静态方法实例化
+                <bean id="userDao" class="com.xq.factory.StaticFactory" factory-method="getUserDao"></bean>
+            工厂实例方法实例化
+                <bean id="factory" class="com.xq.factory.DynamicFactory"></bean>
+                <bean id="userDao" factory-bean="factory" factory-method="getUserDao"></bean>
+        5.Bean依赖注入
+            Spring 核心框架IOC的具体体现
+            业务层与持久层之间的依赖关系交给Spring来维护，坐等框架把持久层对象传入到业务层，不用自己获取
+            注意：1）持久层，完成对象数据和关系数据的转换
+                  2）业务层，事务脚本模式，将一个业务中所有操作封装成一个方法
+                  3）表现层：MVC模式
+
+            依赖注入方式：都需要改对应的类以及配置文件
+                        (详见 com.xq.service.Impl.UserServiceImpl
+                        src/main/resources/applicationContext.xml)
+                set方法
+                构造方法
+
+            属性注入：基本类型、引用类型、集合类型
+            id class scope
+            property(name value ref <list> <map> <properties>)
+            <constructor-arg>
+
+            <bean id="userDao" class="com.xq.dao.impl.UserDaoImpl" scope="singleton" init-method="init" destroy-method="destory"></bean>
+
+            <bean id="userService" class="com.xq.service.Impl.UserServiceImpl">
+                    <property name="userDao" ref="userDao"></property>
+                    <property name="username" value="lisa"></property>
+                    <property name="age" value="18"></property>
+                    <property name="list">
+                            <list>
+                                    <value>aaa</value> <!--基本数据类型-->
+                                    <value>bbb</value> <!--基本数据类型-->
+                                    <value>ccc</value> <!--基本数据类型-->
+                            </list>
+                    </property>
+                    <property name="userMap">
+                            <map>
+                                    <entry key="user1" value-ref="user1"></entry>
+                                    <entry key="user2" value-ref="user2"></entry>
+                            </map>
+                    </property>
+                    <property name="properties">
+                            <props>
+                                    <prop key="p1">ppp1</prop>
+                                    <prop key="p2">ppp2</prop>
+                                    <prop key="p3">ppp3</prop>
+                            </props>
+                    </property>
+            </bean>
+
+
+            <bean id="user1" class="com.xq.domain.User">
+                    <property name="name" value="tom"></property>
+                    <property name="addr" value="Beijing"></property>
+            </bean>
+            <bean id="user2" class="com.xq.domain.User">
+                    <property name="name" value="lucy"></property>
+                    <property name="addr" value="Tianjin"></property>
+            </bean>
+
+    2.<import>标签
+        引入其他spring配置文件
+
+        <!--配置文件import-->
+        <import resource="applicationContext-product.xml"></import>
+        <import resource="applicationContext-user.xml"></import>
+
+Spring相关API
+    1.ApplicationContext实现类
+        ClassPathXmlApplicationContext最常用
+    2.getBean() Spring容器产生对象
+        Object getBean(String name)
+        Object getBean(Class<T> requiredType)
+
+Spring配置数据源
+    1.配置xml文件
+        Spring产生数据源对象DataSource-connection src/test/java/DataSourceTest.java
+        <bean id="dataSource1" class="com.alibaba.druid.pool.DruidDataSource">
+            <property name="DriverClassName" value="com.mysql.jdbc.Driver"></property>
+            <property name="Url" value="jdbc:mysql:///db"></property>
+            <property name="Username" value="root"></property>
+            <property name="Password" value="root"></property>
+        </bean>
+    2.加载jdbc.properties配置文件获得连接信息
+        首先，加载context命名空间和约束路径
+        xmlns:context="http://www.springframework.org/schema/context"
+         xsi:schemaLocation=
+         "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context  http://www.springframework.org/schema/context/spring-context.xsd">
+
+        然后
+        <context:property-placeholder location="classpath:jdbc.properties">
+        <property name="DriverClassName" value="${key}"
+
+Spring注解开发
+    1.Spring原始注解
+        轻代码重配置，注解用来替代配置
+        原始注解主要替代<Bean>配置
+
+        1) <!--使用注解进行开发，需要配置组件扫描-->
+        xmlns:context="http://www.springframework.org/schema/context"
+        xsi:schemaLocation=
+        "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context  http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+        <context:component-scan base-package="com.xq"></context:component-scan>
+
+        2) 把xml中的配置文件换位类、属性、方法上面定义的注解
+        <bean id="userDao" class="com.xq.dao.impl.UserDaoImpl">
+        @Component("userDao") //注册
+        @Repository("userDao") //DAO层类上Bean的实例化
+        @Service("userService") //服务层类上Bean实例化
+        @Controller("userWeb") //web层类上用于实例化Bean
+
+        <property name="userDao" ref="userDao"></property>
+        @Autowired 使用在字段上用于根据类型依赖注入
+        @Qualifier("userDao")//ref  和@Autowired一起使用用于根据名称进行依赖注入
+        @Resource 同上，根据名称进行依赖注入 @Resource(name="userDao")
+                使用注释可以不写类的set方法
+        @Value 注入普通属性 @Value("${key}")
+                结合properties一起使用 传入属性的值
+        @Scope 标注Bean的作用范围
+                @Scope("singleton")
+        @PostConstruct 使用在方法上标注该方法是Bean的初始化方法
+        @PreDestory 使用在方法上标注该方法是Bean的销毁方法
+
+        3）使用注释可以不写类的set方法
+
+    2.Spring新注解
+
+        @Configurable //标志该类是Spring核心配置类
+        @ComponentScan("com.xq")// 扫描注解 <context:component-scan base-package="com.xq">
+        @Import({DataSourceConfig.class}) //<import resource="applicationContext-product.xml"></import>
+        @PropertySource("classpath:jdbc.properties") //加载properties文件 <context:property-placeholder location="classpath:jdbc.properties">
+
+    3.Spring集成Junit步骤
+        思想：将需要进行测试的Bean直接在测试类中进行注入
+              让SpringJunit负责创建Spring容器
+
+        导入spring集成Junit坐标
+        使用@Runwith注解替换原来的运行期
+        使用@ContextConfigration指定配置文件或配置类
+        使用@Autowired注入需要测试的对象
+        创建测试方法进行测试
+
+        @RunWith(SpringJUnit4ClassRunner.class)
+        @ContextConfiguration("classpath:applicationContext.xml")
+        @ContextConfiguration(classes = {SpringConfig.class})
+        @Autowired //注入userService测试对象
+         private UserService userService;
+        @Test //测试userService的方法
+             public void test1(){
+                 userService.save();
+             }
+
+AOP技术--不同功能逻辑隔离
+    1.概念
+        面向切面编程 通过预编译方式和运行期动态代理实现程序功能的统一维护的一种技术
+        动态代理：不修改代码就可以实现功能增强
+                动态生成一个功能增强的对象
+        减少代码重复，提高开发效率
+        修改配置文件，让不同功能的代码在运行时在内存中结合
+        不同切面就是不同功能代码的不同组合
+
+        OOP延续，函数式编程的一种衍生泛型，对业务逻辑各个部分进行隔离，降低不同部分耦合度，提高
+        程序的可用性
+
+        AOP动态代理技术：JDK代理：基于接口的动态代理
+                     cglib代理：基于父类的动态代理
+
+    2.相关概念
+        Target(目标对象) 代理的目标对象（被增强的对象）
+        Proxy(代理) 一个类被AOP织入增强后，就产生一个结果代理类
+        Joinpoint(连接点) 可以被增强的方法
+        Pointcut(切入点) 选中被增强的方法
+        Advice(通知/增强) 增强的功能方法
+        Aspect(切面）：切入点和通知的结合
+        Weaving(织入) 把增强应用到目标对象来创建新的代理对象的过程
+
+    3.AOP编程内容
+
+        spring中框架会根据目标类是否实现了接口来决定使用哪种动态代理
+
+        1)Xml配置AOP详解
+            编写目标类的目标方法
+            编写切面类，其中含有通知方法
+            在配置文件中配置织入关系
+
+            切点表达式：
+                execution([修饰符] 返回值类型 包名.类名.方法名(参数))
+                execution(* com.xq.aop.*.*(..)) com.xq.aop
+                包下的任意类的任意方法，可以有任意个数和类型的参数，返回值类型任意，都是切点 【常用】
+                execution(* com.xq.aop..*.*(..)) com.xq.aop
+                包以及子包下的任意类的任意方法，可以有任意个数和类型的参数，返回值类型任意，都是切点
+
+            通知的类型：
+                <aop:通知类型 method="切面类中的通知方法名" pointcut="切点表达式">
+                前置通知
+                后置通知 after-returning
+                环绕通知
+                异常抛出通知
+                最终通知
+
+        <!--目标对象-->
+        <bean id="target" class="com.xq.aop.Target"></bean>
+        <!--切面对象-->
+        <bean id="myAspect" class="com.xq.aop.MyAspect"></bean>
+        <!--配置织入-->
+        <aop:config>
+                <!--声明切面:切点+通知-->
+                <aop:aspect ref="myAspect">
+                       <aop:before method="beforeMethod" pointcut="execution(public void com.xq.aop.Target.save())"></aop:before>
+                </aop:aspect>
+
+
+            切点表达式的抽取
+                <aop:pointcut id="myPointcut" expression="execution(* com.xq.aop.*.*(..))"/>
+                <aop:after-returning method="afterReturning" pointcut-ref="myPointcut"></aop:after-returning>
+
+        2)基于注解的AOP开发
+            创建目标接口和目标类（有切点）
+            创建切面类（有增强方法）
+            将目标类和切面类对象的创建权交给spring
+                  @Component("myAspect")
+                  @Aspect /* <!--声明切面:切点+通知--> <aop:aspect ref="myAspect">*/
+            在切面类中使用注解配置织入关系
+                  @Before("execution(* com.xq.aop.*.*(..))") //配置前置增强
+            在配置文件中开启组件扫描和AOP自动代理
+            <context:component-scan base-package="com.xq.aop"></context:component-scan>
+            <!--aop自动代理-->
+            <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+
+            切点表达式
+             //抽取切点表达式
+                @Pointcut("execution(* com.xq.aop.*.*(..))")
+                public void pointcut(){}
+             //使用
+                @Around("pointcut()")
+
+Spring JBDCTemplate
+    1.概念：对原始繁琐jdbcAPI的封装，
+    2.开发步骤
+        导入spring-jdbc和spring-tx
+        创建数据库表和实体
+        创建JBDCTemplate对象,传入数据源对象datasource(Druid)
+            可以交给Spring来创建，通过配置文件
+        执行数据库操作
+
+        <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+            <property name="DriverClassName" value="com.mysql.jdbc.Driver"></property>
+            <property name="Url" value="jdbc:mysql:///db"></property>
+            <property name="Username" value="root"></property>
+            <property name="Password" value="root"></property>
+        </bean>
+
+        <!--JDBCTemplate-->
+        <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+            <property name="dataSource" ref="dataSource"></property>
+        </bean>
+
+        @Test
+        public void testQueryCount(){
+            Long aLong = jdbcTemplate.queryForObject("select count(*) from account", Long.class);
+            System.out.println(aLong);
+        }
+
+Spring事务控制
+    温习：事务
+        1）概念
+        如果多个步骤被事务管理，这些步骤要么同时成功要么同时失败
+        Mysql默认自动提交：一条DML语句会自动提交一次事务 Oracle：默认手动提交
+        手动提交事务：需要开启事务 再提交
+        2）事务的四大特性
+            原子性：同时成功同时失败
+            持久性：事务提交或回滚，数据库会持久化保存数据
+            隔离性：多个事务之间相互独立
+            一致性：事务操作前后数据总量不变
+        3）事务的隔离级别
+            概念：多个事务操作同一批数据会引发一些问题，设置不同的隔离级别就可以解决这些问题
+            问题：
+                脏读 一个事务读取到另一个事务中没有提交的数据
+                不可重复读 在同一个事务中两次读取到的数据不一样（虚读）
+                幻读 一个事务操作数据表中所有记录，另一个事务添加了一条数据，则第一个事务查询不到自己的修改
+            隔离级别：
+                read uncommitted 读未提交：脏读、不可重复读、幻读
+                read committed 不可重复读、幻读 （Oracle默认）
+                repeatable read 幻读 （mySQL默认） 两边都commit才能看到变化
+                serializable 不会有问题
+                隔离级别从小到大 安全性越来越高 效率越来越低
+
+                隔离级别查询：select @@tx_isolation
+                设置隔离级别：set global transaction isolation level 级别字符串
+                             更改重新开一个窗口才能生效
+                             start transaction; 开启事务 需要手动commit
+
+    1.编程式事务控制相关对象
+        PlatformTransactionManager接口 平台事务管理器
+                指定事务控制行为(commit rollback) 不同DAO层技术用到的实现类不同
+        TransactionDefinition 维护事务参数
+        1)事务隔离级别
+           解决事务并发产生的问题，如脏读、不可重复读、虚读
+
+        2)事务的传播行为
+            调用业务方法时业务统一性的问题
+            REQUIRED：A调用B 如果A本身存在于一个事务，B直接加入，否则会创建一个事务执行B
+
+
+        TransactionStatus接口 事务具体运行状态
+        前两个需要配置，最后一个不需要配置
+    2.基于XML的声明式事务控制
+        事务管理属于系统层面的服务，不属于业务逻辑一部分，事务管理不会侵入开发组件
+        事务相当于一种增强
+        业务逻辑相当于切入点
+        改变事务管理只需要修改配置，不需要重新编译代码
+
+        声明式事务控制底层就是AOP
+
+        1)引入tx命名空间和约束条件
+        2)平台事务管理实例化 class可能会换 需要传入datasource
+        3)编写通知 需要transaction-manager、attributes（事务的属性信息，隔离级别等）
+                    <tx:method name="*"/> 切点方法的事务参数配置
+        4)编写事务aop编入 需要advice-ref事务增强 pointcut切入点表达式
+
+        <!--目标对象 内部方法就是切点-->
+        <bean id="accountService" class="com.xq.service.AccountServiceImpl">
+            <property name="account" ref="accountDao"></property>
+        </bean>
+
+        <!--平台事务管理器实例化-->
+        <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+            <property name="dataSource" ref="dataSource"></property>
+        </bean>
+
+        <!--通知/增强-->
+        <tx:advice id="txAdvice" transaction-manager="transactionManager">
+            <tx:attributes>
+                <tx:method name="*"/>
+                <tx:method name="transfer" isolation="REPEATABLE_READ" propagation="REQUIRED" timeout="-1" read-only="false"></tx:method>
+                对目标所有方法/transfer方法事务设置相关属性
+            </tx:attributes>
+        </tx:advice>
+
+        <!--配置事务的aop织入-->
+        <aop:config>
+            <aop:advisor advice-ref="txAdvice" pointcut="execution(* com.xq.service.*.*(..))"></aop:advisor>
+        </aop:config>
+
+    3.基于注解的声明式事务控制
+        平台事务管理器（xml方式）
+        事务通知的配置（@Transactional注解配置）
+        事务注解驱动的配置<tx:annotation-driven/>
+
+        <!--开启组件扫描-->
+        <context:component-scan base-package="com.xq"></context:component-scan>
+        <!--平台事务管理器实例化-->
+        <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+            <property name="dataSource" ref="dataSource"></property>
+        </bean>
+
+        @Transactional(isolation = Isolation.REPEATABLE_READ,propagation = Propagation.REQUIRED)
+        在目标对象方法上标记事务，可设置参数，也可以直接在目标对象类上加此注解，表示这一类中所有切点方法
+        都会以该事务参数被增强
+
+        <!--事务的注解驱动-->
+        <tx:annotation-driven transaction-manager="transactionManager"></tx:annotation-driven>
+
+Spring集成web环境
+    1.servlet接口
+        开发动态web资源
+        用Java编写的服务器端程序
+        其主要功能在于交互式地浏览和修改数据,生成动态Web内容
+
+        有两个默认实现类:GenericServlet HttpServlet
+    2.java编写服务器端：
+        首先，实现servlet接口
+        其次，把开发好的Java类部署到web服务器中
+
+        注意：Tomcat
+            这个软件用来装载你的javaWeb程序，可以称它为web容器，你的jsp/servlet程序需要运行在Web容器
+        上,Tomcat是一个免费的开源的Servlet容器
+
+        其实用通俗的语言来讲，万维网本质上就是“超文本文档”（HTML文档）组成的一个通过超级链接互相访
+        问交互网络。你从甲计算机上的文档A通过超链接访问乙计算机上的文档B，而B必须放在Web服务器
+        （Tomcat）里才能被访问。
+    3.ApplicationContext应用上下文获取方式
+        使用ServletContextListener监听Web应用启动，可以在Web应用启动时加载Spring配置文件
+        创建应用上下文对象ApplicationContext，将其存储到最大的域servletContext域中，就可以从
+        任意位置获得应用上下文ApplicationContext对象
+
+        Spring提供获取应用上下文的工具
+        1）在web.xml中配置ContextLoaderListener监听器(先在pom中导入)
+        2）使用WebApplicationContextUtils获得应用上下文对象ApplicationContext
+
+    4.Spring集成web环境步骤
+        1）配置ContextLoaderListener监听器
+        2) 使用WebApplicationContextUtils获得应用上下文对象ApplicationContext
+
+        <!--全局初始化参数-->
+        <context-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationContext.xml</param-value><!--报错不用管-->
+        </context-param>
+
+        <!--配置监听器-->
+        <listener>
+            <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+        </listener>
+
+        ServletContext servletContext = req.getServletContext();
+        ApplicationContext app = WebApplicationContextUtils.getWebApplicationContext(servletContext);
+        UserService userService = app.getBean(UserService.class);
+
+SpringMVC
+    1.SpringMVC设计模式
+        通过一套注解让一个简单的java类成为处理请求的控制器，无需实现任何接口，同时支持RESTful编程
+        风格的请求
+
+        MVC：M是指业务模型，V是指用户界面，C则是控制器，使用MVC的目的是将M和V的实现代码分离，从而使同一个程序可以使用不同的表现形式
+
+    2.开发步骤
+    Tomcat引擎 接收客户端请求，封装代表请求的req,代表响应的resp，调用请求资源
+    web应用   servlet共有部分 前端控制器 SpringMVC 映射访问真实资源
+              servlet特有部分 自己写   也需要配置@RequestMapping("/quick")  @Controller
+
+        1）导入SpringMVC包
+        2）配置Servlet 在web.xml中配置ServletMVC前端控制器
+        3）编写Controller
+        4）将Controller使用注解配置到Spring容器中（@controller）
+        5）配置组件扫描 spring-mvc.xml
+        6) 执行访问测试
+
+    3.SpringMVC执行流程
+        三大组件：处理器映射器 处理器适配器 视图解析器
+        用户请求发送至前端控制器DispatcherServlet
+        DispatcherServlet收到请求调用HandlerMapping处理器映射器
+        HandlerMapping找到具体的处理器生成处理器对象以及处理器拦截器返回给DispatcherServlet
+        DispatcherServlet调用HandlerAdapter处理器适配器
+        HandlerAdapter经过适配器调用具体处理器（Controller 后端控制器）
+        Controller执行完成返回ModelAndView
+        HandlerAdapter将Controller执行结果ModelAndView返回给DispatcherServlet
+        DispatcherServlet把ModelAndView传递给ViewResolver视图解析器
+        ViewResolver解析后返回具体View
+        DispatcherServlet根据View进行渲染视图（将模型数据填充至视图）
+        DispatcherServlet响应用户
+
+    4.Spring-MVC注解解析
+        @RequestMapping(value="/quick",method=RequestMethod.GET,params={"username"})
+
+    5.Spring的数据响应 --controller中返回
+        页面跳转
+            1）返回字符串
+            2）返回ModelAndView
+        回写数据
+            @ResponseBody 告知SpringMVC不进行视图跳转，直接进行数据响应
+            1) 回写字符串
+            2）回写json
+            3）回写对象或集合 配置一个处理器映射器
+                <!--mvc注解驱动，默认集成jackson进行对象或者集合的json转换-->
+                <mvc:annotation-driven></mvc:annotation-driven>
+
+        获取参数
+            1）基本数据类型
+            2）数组类型
+            3）对象类型：只要属性名相同会自动赋值 传入对象实例即可
+            4）集合类型：封装成POJO作为一个对象，或者不需要处理在静态页面中配置
+                    当使用ajax提交时，可以指定contentType为json形式，那么在方法参数位置使用
+                    @RequestBody可以直接接收集合数据而无需使用POJO进行包装
+
+        静态资源访问权限
+            <mvc:default-servlet-handler/>
+            如果MVC框架找不到静态资源会交给原始容器找静态资源
+
+        配置全局乱码过滤器（post方法乱码）
+            CharacterEncodingFilter
+            <filter>
+            若想要返回数据不乱码，需要在注解上面加produces参数
+
+        参数绑定注解
+            (@RequestParam(value="name") String username)
+            请求参数和实际controller参数的映射
+
+        Restful风格
+            设计风格 用于客户端和服务端交互类软件
+            请求使用“url+请求”表示一次请求目的
+                GET
+                POST
+                PUT
+                DELETE
+
+            //Restful参数接收  请求 http://localhost:8080/quick7/zhangsan
+            @RequestMapping("/quick7/{name}")
+            @ResponseBody
+            public void save7(@PathVariable(value="name" required=true) String username){
+                System.out.println(username);
+            }
+
+
+        自定义类型转换器
+            基本的类型转换器已经实现
+            特别的需要自己转换
+
+            1）定义转换器类实现Converter接口
+            2）在配置文件中声明转换器
+            3）在<mvc:annotation-driven>中声明
+
+        获得请求头
+            @CookieValue(value="JSESSIONID",required=false)
+            @RequestHeader(value="User-Agent",required=true)
+
+            @RequestMapping("/quick8") //路由
+            @ResponseBody //获取请求头作为方法输入
+            public void save8(@RequestHeader(value="User-Agent",required=true) String user_agent){
+                System.out.println(user_agent);
+            }
+
+            会话跟踪是很重要的事情。理论上，一个用户的所有请求操作都应该属于同一个会话
+
+            由于HTTP是一种无状态的协议，服务器单从网络连接上无从知道客户身份。怎么办呢？
+            就给客户端们颁发一个通行证吧，每人一个，无论谁访问都必须携带自己通行证。
+            这样服务器就能从通行证上确认客户身份了。这就是Cookie的工作原理
+
+        文件上传
+            导入依赖commons-fileupload/common-io
+            配置文件上传解析器CommonsMultipartResolver
+            编写文件上传代码 MultipartFile uploadFile
+                uploadFile.getOriginalFilename();
+                uploadFile.transferTo(File); 保存文件
+
+            //单文件上传
+            @RequestMapping("/quick9")
+            @ResponseBody
+            public void fileUpload(String name, MultipartFile uploadFile) throws IOException {
+                String originalFilename = uploadFile.getOriginalFilename();
+                uploadFile.transferTo(new File("C:\\upload\\"+originalFilename));
+            }
+
+    6.SpringMVC拦截器
+        1.作用
+            对处理器进行预处理和后处理
+            类似于Servlet中的过滤器
+            AOP思想的具体实现
+
+        2.拦截器和过滤器的不同
+            过滤器是JAVA WEB中可以使用，但是拦截器是SpringMVC特有的，只会对controller方法拦截
+
+        3.拦截器
+            创建拦截器类实现HandlerInterceptor接口，重写方法
+                preHandle()
+                postHandle() 前提是preHandle返回true,在渲染视图之前执行
+                afterCompletion()  前提是preHandle返回true，在渲染视图之后执行
+            配置拦截器
+            测试拦截器拦截效果
+
+    7.SpringMVC异常
+        系统的DAO Service Controller出现异常通过throws Exception向上抛出，最后由SpringMVC前端控制器
+        交由异常处理器进行异常处理
+
+        1.SimpleMappingExceptionResolver SpringMVC提供的简单异常处理器
+            使用时可以根据项目情况进行相应的异常与视图的映射配置
+            <!--配置异常处理器-->
+            <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+                <property name="defaultErrorView" value="error"></property>
+                <property name="exceptionMappings">
+                    <map>
+                        <entry key="java.lang.ClassCastException" value="error1"></entry>
+                        <entry key="java.lang.ClassCastException" value="error2"></entry>
+                    </map>
+                </property>
+            </bean>
+
+        2.HandleExceptionResolver接口，自定义异常处理
+            创建一个类实现上述接口，重写方法
+                方法返回值ModelAndView 是跳转到错误视图信息
+            把这个类注册到容器中，不需要特别其他的配置
+
+Spring练习
+    1.环境搭建
+        创建工程
+        导入静态页面
+        导入pom依赖
+        创建包结构（controller service dao domain utils)
+        导入数据库脚本
+        创建POJO类
+        创建配置文件（applicationContext.xml spring-mvc.xml jdbc.properties log4j.properties

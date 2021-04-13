@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context  http://www.springframework.org/schema/context/spring-context.xsd">
+
+        <!--Bean实例化的三种方法-->
+        <!--无参构造-->
+        <bean id="userDao" class="com.xq.dao.impl.UserDaoImpl"></bean>
+        <!--<bean id="userDao" class="com.xq.dao.impl.UserDaoImpl" scope="singleton" init-method="init" destroy-method="destory"></bean>-->
+
+        <!--工厂静态方法构造-->
+<!--        <bean id="userDao" class="com.xq.factory.StaticFactory" factory-method="getUserDao"></bean>-->
+        <!--工厂实例方法构造-->
+        <!--<bean id="factory" class="com.xq.factory.DynamicFactory"></bean>
+        <bean id="userDao" factory-bean="factory" factory-method="getUserDao"></bean>-->
+
+
+        <!--Bean属性注入-->
+        <!--在业务层对应的方法下面添加 完成Bean注入
+            property name是类中对应set的属性名 ref对应注入的bean的id-->
+        <!--<bean id="userService" class="UserServiceImpl"></bean>-->
+        <bean id="userService" class="com.xq.service.Impl.UserServiceImpl">
+                <property name="userDao" ref="userDao"></property>
+                <property name="username" value="lisa"></property>
+                <property name="age" value="18"></property>
+                <property name="list">
+                        <list>
+                                <value>aaa</value> <!--基本数据类型-->
+                                <value>bbb</value> <!--基本数据类型-->
+                                <value>ccc</value> <!--基本数据类型-->
+                        </list>
+                </property>
+                <property name="userMap">
+                        <map>
+                                <entry key="user1" value-ref="user1"></entry>
+                                <entry key="user2" value-ref="user2"></entry>
+                        </map>
+                </property>
+                <property name="properties">
+                        <props>
+                                <prop key="p1">ppp1</prop>
+                                <prop key="p2">ppp2</prop>
+                                <prop key="p3">ppp3</prop>
+                        </props>
+                </property>
+        </bean>
+
+
+        <bean id="user1" class="com.xq.domain.User">
+                <property name="name" value="tom"></property>
+                <property name="addr" value="Beijing"></property>
+        </bean>
+        <bean id="user2" class="com.xq.domain.User">
+                <property name="name" value="lucy"></property>
+                <property name="addr" value="Tianjin"></property>
+        </bean>
+
+
+        <!--p空间设置set注入方法-->
+        <!--xmlns:p="http://www.springframework.org/schema/p"-->
+        <!--<bean id="userService" class="com.xq.service.Impl.UserServiceImpl" p:userDao-ref="userDao"></bean>-->
+
+
+        <!--构造方法注入
+            constructor-arg name是构造方法的参数名 ref是注入对象的bean的id
+            -->
+        <!--<bean id="userService" class="com.xq.service.Impl.UserServiceImpl" p:userDao-ref="userDao">
+                <constructor-arg name="userDao" ref="userDao"></constructor-arg>
+        </bean>-->
+
+
+        <!--配置文件import-->
+        <import resource="applicationContext-product.xml"></import>
+        <import resource="applicationContext-user.xml"></import>
+
+        <!--Spring配置数据源对象-->
+        <!--property name是类中对应set的属性名 -->
+        <bean id="dataSource1" class="com.alibaba.druid.pool.DruidDataSource">
+                <property name="DriverClassName" value="com.mysql.jdbc.Driver"></property>
+                <property name="Url" value="jdbc:mysql:///db"></property>
+                <property name="Username" value="root"></property>
+                <property name="Password" value="root"></property>
+        </bean>
+
+        <!--Spring加载properties文件-->
+        <context:property-placeholder location="classpath:jdbc.properties"></context:property-placeholder>
+        <!--配置文件在resource里面 location要加classpath-->
+        <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+                <property name="DriverClassName" value="${jdbc.driver}"></property>
+                <property name="Url" value="${jdbc.url}"></property>
+                <property name="Username" value="${jdbc.username}"></property>
+                <property name="Password" value="${jdbc.password}"></property>
+        </bean>
+
+        <!--使用注解进行开发，需要配置组件扫描-->
+        <context:component-scan base-package="com.xq"></context:component-scan>
+
+</beans>
